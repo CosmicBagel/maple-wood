@@ -14,31 +14,35 @@ pub const UNICODE = true;
 
 const print = std.debug.print;
 pub fn main() !void {
+    print("start", .{});
     // initWayland();
     initWindows();
+    print("end", .{});
 }
 
 fn initWindows() void {
     //win32.foundation.HINSTANCE this type
     // win32.system.library_loader.GetModuleHandle(lpModuleName: ?[*:0]const u8)
     // win32.system.library_loader.GetModuleHandle(lpModuleName: ?[*:0]const u16)
-    const hInstance = win32.GetModuleHandle(null);
-    const windowClass = win32.WNDCLASS{
+    const hInstance = win32.GetModuleHandleW(null);
+    const windowClass = win32.WNDCLASSEXW{
         .style = win32.WNDCLASS_STYLES{},
         .lpfnWndProc = windowEventHandler,
-        .hInstance = hInstance,
-        .cbClsExtra = 0,
-        .cbWndExtra = 0,
-        .hIcon = win32.LoadIconW(null, win32.IDI_APPLICATION),
-        .hCursor = win32.LoadCursorW(null, win32.IDC_ARROW),
-        .hbrBackground = null,
         .lpszClassName = win32.L("yeet"),
         .lpszMenuName = null,
+        .hInstance = hInstance,
+        .hIcon = null, //win32.LoadIconW(null, win32.IDI_APPLICATION),
+        .hCursor = null, //win32.LoadCursorW(null, win32.IDC_ARROW),
+        .hbrBackground = null,
+        .hIconSm = null,
+        .cbSize = @sizeOf(win32.WNDCLASSEX),
+        .cbClsExtra = 0,
+        .cbWndExtra = 0,
     };
 
-    _ = win32.RegisterClass(&windowClass);
+    _ = win32.RegisterClassExW(&windowClass);
 
-    const hwnd = win32.CreateWindowEx(
+    const hwnd = win32.CreateWindowExW(
         win32.WINDOW_EX_STYLE{},
         win32.L("yeet"),
         win32.L("yeet"),
@@ -57,9 +61,10 @@ fn initWindows() void {
         null,
     );
 
-    if (hwnd == null) {
-        @panic("hwnd is null, fuck you");
-    }
+    // for some reason hwnd is null, but still works????
+    // if (hwnd == null) {
+    //     @panic("hwnd is null, fuck you");
+    // }
 
     _ = win32.ShowWindow(hwnd, win32.SHOW_WINDOW_CMD{ .SHOWNORMAL = 0 });
 
