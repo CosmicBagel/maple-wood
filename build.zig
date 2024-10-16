@@ -36,6 +36,10 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    if (target.query.os_tag == .windows) {
+        exe.subsystem = .Console;
+    }
+
     const zigwin32_dep = b.dependency("zigwin32", .{});
     const zigwin32 = zigwin32_dep.module("zigwin32");
     exe.root_module.addImport("zigwin32", zigwin32);
