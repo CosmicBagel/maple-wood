@@ -8,45 +8,126 @@ const win32 = struct {
     usingnamespace zigwin32.ui.windows_and_messaging;
     usingnamespace zigwin32.system.library_loader;
 };
+const win32Error = win32.WIN32_ERROR;
 // const windows = win32.ui.windows_and_messaging;
 // have to declare this for zigwin32 as it checks the root module if UNICODE is defined
 pub const UNICODE = true;
 
 const print = std.debug.print;
+
+const MyError = error{
+    Win32Error,
+};
+
 pub fn main() !void {
-    print("start", .{});
-    // initWayland();
-    initWindows();
-    print("end", .{});
+    print("start linux\n", .{});
+    try initWayland();
+    print("end linux\n", .{});
 }
 
-fn initWindows() void {
-    //win32.foundation.HINSTANCE this type
-    // win32.system.library_loader.GetModuleHandle(lpModuleName: ?[*:0]const u8)
-    // win32.system.library_loader.GetModuleHandle(lpModuleName: ?[*:0]const u16)
+pub export fn wWinMain(hInstance: win32.HINSTANCE, hPrevInstance: ?win32.HINSTANCE, pCmdLine: [*:0]u16, nCmdShow: c_int) callconv(WINAPI) c_int {
+    win32ErrorCheck() catch |err| {
+        win32ShowError("win start", err);
+        return 1;
+    };
+
+    _ = hPrevInstance;
+    _ = pCmdLine;
+    _ = nCmdShow;
+
+    _ = win32.MessageBoxW(
+        null,
+        win32.L("text"),
+        win32.L("hello"),
+        win32.MESSAGEBOX_STYLE{},
+    );
+
+    print("win start\n", .{});
+    initWindows(hInstance) catch |err| {
+        print("windows error!!!! - {any}\n", .{err});
+        return 1;
+    };
+    print("win end\n", .{});
+    return 0;
+}
+
+fn win32ErrorCheck() !void {
+    const err = win32.GetLastError();
+    if (err != win32.WIN32_ERROR.NO_ERROR) {
+        return MyError.Win32Error;
+    }
+}
+
+fn win32ShowError(lastFunctionName: []const u8, err: win32Error) !void {
+    var buffer: [1024]u8 = undefined;
+    var fba = std.heap.FixedBufferAllocator.init(&buffer);
+    const allocator = fba.allocator();
+
+    const str = try std.fmt.allocPrint(
+        allocator,
+        "win32 error: {s} - {any} (0x{x:0>8})\n",
+        .{ lastFunctionName, err, @intFromEnum(err) },
+    );
+
+    // windows api operates on utf-16 strings
+    const utf16str = try std.unicode.utf8ToUtf16LeAllocZ(allocator, str);
+    print("{s}", .{str});
+    _ = win32.MessageBoxW(
+        null,
+        utf16str,
+        win32.L("win32 error"),
+        win32.MESSAGEBOX_STYLE{},
+    );
+}
+
+fn initWindows(hInstanceArg: win32.HINSTANCE) !void {
+    _ = hInstanceArg;
+
+    // sometimes there's just an error sitting there for some reason
+    win32.GetLastError() catch |err| {
+        const lastFunctionName = "initWidows: start";
+        switch (err) {
+            win32Error.NO_ERROR => {},
+            win32Error.ERROR_SXS_KEY_NOT_FOUND => {
+                win32ShowError(lastFunctionName, err);
+            },
+            else => {
+                win32ShowError(lastFunctionName, err);
+                return MyError.Win32Error;
+            },
+        }
+    };
+    win32.SetLastError(win32.WIN32_ERROR.NO_ERROR);
+
     const hInstance = win32.GetModuleHandleW(null);
+    if (hInstance == null) {
+        print("GetModuleHandleW returned null hInstance\n", .{});
+    }
+    try win32ErrorCheck();
+
     const windowClass = win32.WNDCLASSEXW{
         .style = win32.WNDCLASS_STYLES{},
         .lpfnWndProc = windowEventHandler,
         .lpszClassName = win32.L("yeet"),
         .lpszMenuName = null,
         .hInstance = hInstance,
-        .hIcon = null, //win32.LoadIconW(null, win32.IDI_APPLICATION),
-        .hCursor = null, //win32.LoadCursorW(null, win32.IDC_ARROW),
+        .hIcon = null,
+        .hCursor = null,
         .hbrBackground = null,
         .hIconSm = null,
-        .cbSize = @sizeOf(win32.WNDCLASSEX),
+        .cbSize = @sizeOf(win32.WNDCLASSEXW),
         .cbClsExtra = 0,
         .cbWndExtra = 0,
     };
 
     _ = win32.RegisterClassExW(&windowClass);
+    try win32ErrorCheck();
 
     const hwnd = win32.CreateWindowExW(
         win32.WINDOW_EX_STYLE{},
         win32.L("yeet"),
-        win32.L("yeet"),
-        win32.WS_OVERLAPPEDWINDOW,
+        null,
+        win32.WINDOW_STYLE{},
 
         // size and pos
         win32.CW_USEDEFAULT,
@@ -60,13 +141,10 @@ fn initWindows() void {
         hInstance,
         null,
     );
-
-    // for some reason hwnd is null, but still works????
-    // if (hwnd == null) {
-    //     @panic("hwnd is null, fuck you");
-    // }
+    try win32ErrorCheck();
 
     _ = win32.ShowWindow(hwnd, win32.SHOW_WINDOW_CMD{ .SHOWNORMAL = 0 });
+    try win32ErrorCheck();
 
     print("\n\n{any}\n\n", .{windowClass});
 }
@@ -75,7 +153,7 @@ fn windowEventHandler(_: win32.HWND, _: u32, _: win32.WPARAM, _: win32.LPARAM) c
     return 0;
 }
 
-fn initWayland() void {
+fn initWayland() !void {
     // https://zig.news/leroycep/wayland-from-the-wire-part-1-12a1
     // https://zig.news/leroycep/wayland-from-the-wire-part-2-1gb7
     // get display path
