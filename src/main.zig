@@ -19,6 +19,7 @@ const MyError = error{
     Win32Error,
 };
 
+// TODO: have this change between win32 and wayland based on compile target
 pub fn main() !void {
     print("start\n", .{});
     try initWindows();
@@ -37,18 +38,18 @@ fn win32ErrorCheck(lastFunctionName: []const u8, chillErrors: anytype) !void {
     if (winErr != win32Error.NO_ERROR) {
         inline for (chillErrors) |chillErr| {
             if (winErr == chillErr) {
-                try win32ShowError(lastFunctionName, winErr);
+                try win32ShowError(false, lastFunctionName, winErr);
                 break;
             }
         } else {
-            try win32ShowError(lastFunctionName, winErr);
+            try win32ShowError(true, lastFunctionName, winErr);
             return MyError.Win32Error;
         }
         win32.SetLastError(win32.WIN32_ERROR.NO_ERROR);
     }
 }
 
-fn win32ShowError(lastFunctionName: []const u8, winErr: win32Error) !void {
+fn win32ShowError(showMessageBox: bool, lastFunctionName: []const u8, winErr: win32Error) !void {
     var buffer: [1024]u8 = undefined;
     var fba = std.heap.FixedBufferAllocator.init(&buffer);
     const allocator = fba.allocator();
@@ -58,16 +59,18 @@ fn win32ShowError(lastFunctionName: []const u8, winErr: win32Error) !void {
         "win32 error: {s} - {any} (0x{x:0>8})\n",
         .{ lastFunctionName, winErr, @intFromEnum(winErr) },
     );
-
-    // windows api operates on utf-16 strings
-    const utf16str = try std.unicode.utf8ToUtf16LeAllocZ(allocator, str);
     print("{s}", .{str});
-    _ = win32.MessageBoxW(
-        null,
-        utf16str,
-        win32.L("win32 error"),
-        win32.MESSAGEBOX_STYLE{},
-    );
+
+    if (showMessageBox) {
+        // windows api operates on utf-16 strings
+        const utf16str = try std.unicode.utf8ToUtf16LeAllocZ(allocator, str);
+        _ = win32.MessageBoxW(
+            null,
+            utf16str,
+            win32.L("win32 error"),
+            win32.MESSAGEBOX_STYLE{},
+        );
+    }
 }
 
 fn initWindows() !void {
@@ -142,11 +145,11 @@ fn initWindows() !void {
         0,
         0,
     ) > 0) {
-        try win32ErrorCheck("GetMessageW", .{});
+        try win32ErrorCheck("GetMessageW", .{win32Error.ERROR_INVALID_WINDOW_HANDLE});
         _ = win32.TranslateMessage(&msg);
         try win32ErrorCheck("TranslateMessage", .{});
         _ = win32.DispatchMessage(&msg);
-        try win32ErrorCheck("DispatchMessage", .{});
+        try win32ErrorCheck("DispatchMessage", .{win32Error.ERROR_ACCESS_DENIED});
     }
 }
 
