@@ -51,8 +51,15 @@ pub export fn wWinMain(hInstance: win32.HINSTANCE, hPrevInstance: ?win32.HINSTAN
     return 0;
 }
 
-const win32ErrorTuple = std.meta.Tuple(&[_]type{win32Error});
-fn win32ErrorCheck(lastFunctionName: []const u8, chillErrors: win32ErrorTuple) !void {
+fn win32ErrorCheck(lastFunctionName: []const u8, chillErrors: anytype) !void {
+    const ArgsType = @TypeOf(chillErrors);
+    const args_type_info = @typeInfo(ArgsType);
+    if (args_type_info != .Struct) {
+        @compileError("expected tuple or struct argument, found " ++ @typeName(ArgsType));
+    }
+
+    // const fields_info = args_type_info.Struct.fields;
+
     const winErr = win32.GetLastError();
     if (winErr != win32Error.NO_ERROR) {
         inline for (chillErrors) |chillErr| {
@@ -100,7 +107,7 @@ fn initWindows(hInstanceArg: win32.HINSTANCE) !void {
     if (hInstance == null) {
         print("GetModuleHandleW returned null hInstance\n", .{});
     }
-    // try win32ErrorCheck();
+    try win32ErrorCheck("GetModuleHandleW", .{});
 
     const windowClass = win32.WNDCLASSEXW{
         .style = win32.WNDCLASS_STYLES{},
