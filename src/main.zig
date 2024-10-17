@@ -20,35 +20,10 @@ const MyError = error{
 };
 
 pub fn main() !void {
-    print("start linux\n", .{});
-    try initWayland();
-    print("end linux\n", .{});
-}
-
-pub export fn wWinMain(hInstance: win32.HINSTANCE, hPrevInstance: ?win32.HINSTANCE, pCmdLine: [*:0]u16, nCmdShow: c_int) callconv(WINAPI) c_int {
-    // win32ErrorCheck() catch |err| {
-    //     win32ShowError("win start", err);
-    //     return 1;
-    // };
-
-    _ = hPrevInstance;
-    _ = pCmdLine;
-    _ = nCmdShow;
-
-    // _ = win32.MessageBoxW(
-    //     null,
-    //     win32.L("text"),
-    //     win32.L("hello"),
-    //     win32.MESSAGEBOX_STYLE{},
-    // );
-
-    print("win start\n", .{});
-    initWindows(hInstance) catch |err| {
-        print("windows error!!!! - {any}\n", .{err});
-        return 1;
-    };
-    print("win end\n", .{});
-    return 0;
+    print("start\n", .{});
+    try initWindows();
+    // try initWayland();
+    print("end\n", .{});
 }
 
 fn win32ErrorCheck(lastFunctionName: []const u8, chillErrors: anytype) !void {
@@ -57,8 +32,6 @@ fn win32ErrorCheck(lastFunctionName: []const u8, chillErrors: anytype) !void {
     if (args_type_info != .Struct) {
         @compileError("expected tuple or struct argument, found " ++ @typeName(ArgsType));
     }
-
-    // const fields_info = args_type_info.Struct.fields;
 
     const winErr = win32.GetLastError();
     if (winErr != win32Error.NO_ERROR) {
@@ -97,9 +70,7 @@ fn win32ShowError(lastFunctionName: []const u8, winErr: win32Error) !void {
     );
 }
 
-fn initWindows(hInstanceArg: win32.HINSTANCE) !void {
-    _ = hInstanceArg;
-
+fn initWindows() !void {
     // sometimes there's just an error sitting there for some reason
     try win32ErrorCheck("initWindows - start", .{win32Error.ERROR_SXS_KEY_NOT_FOUND});
 
@@ -131,7 +102,8 @@ fn initWindows(hInstanceArg: win32.HINSTANCE) !void {
         win32.WINDOW_EX_STYLE{},
         win32.L("yeet"),
         null,
-        win32.WINDOW_STYLE{},
+        win32.WS_OVERLAPPEDWINDOW,
+        // win32.WINDOW_STYLE{},
 
         // size and pos
         win32.CW_USEDEFAULT,
@@ -147,14 +119,43 @@ fn initWindows(hInstanceArg: win32.HINSTANCE) !void {
     );
     try win32ErrorCheck("CreateWindowExW", .{win32Error.ERROR_INVALID_WINDOW_HANDLE});
 
-    _ = win32.ShowWindow(hwnd, win32.SHOW_WINDOW_CMD{ .SHOWNORMAL = 0 });
+    const showWindowResult = win32.ShowWindow(
+        hwnd,
+        win32.SHOW_WINDOW_CMD{ .SHOWNORMAL = 1 },
+    );
     try win32ErrorCheck("ShowWindow", .{win32Error.ERROR_INVALID_WINDOW_HANDLE});
+    print("showWindowResult: {d}\n", .{showWindowResult});
 
     print("\n\n{any}\n\n", .{windowClass});
+
+    var msg = win32.MSG{
+        .hwnd = null,
+        .lParam = 0,
+        .wParam = 0,
+        .time = 0,
+        .pt = win32.POINT{ .x = 0, .y = 0 },
+        .message = 0,
+    };
+    while (win32.GetMessageW(
+        &msg,
+        null,
+        0,
+        0,
+    ) > 0) {
+        try win32ErrorCheck("GetMessageW", .{});
+        _ = win32.TranslateMessage(&msg);
+        try win32ErrorCheck("TranslateMessage", .{});
+        _ = win32.DispatchMessage(&msg);
+        try win32ErrorCheck("DispatchMessage", .{});
+    }
 }
 
-fn windowEventHandler(_: win32.HWND, _: u32, _: win32.WPARAM, _: win32.LPARAM) callconv(WINAPI) win32.LRESULT {
-    return 0;
+fn windowEventHandler(hwnd: win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32.LPARAM) callconv(WINAPI) win32.LRESULT {
+    // this is hella spammy, so have it commented out for now
+    // win32ErrorCheck("windowEventHandler", .{}) catch {
+    //     print("win32error\n", .{});
+    // };
+    return win32.DefWindowProcW(hwnd, uMsg, wParam, lParam);
 }
 
 fn initWayland() !void {
