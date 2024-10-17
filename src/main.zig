@@ -160,6 +160,13 @@ fn windowEventHandler(hwnd: win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam:
     // win32ErrorCheck("windowEventHandler", .{}) catch {
     //     print("win32error\n", .{});
     // };
+    switch (uMsg) {
+        win32.WM_DESTROY => {
+            win32.PostQuitMessage(0);
+            return 0;
+        },
+        else => {},
+    }
     return win32.DefWindowProcW(hwnd, uMsg, wParam, lParam);
 }
 
