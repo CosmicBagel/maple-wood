@@ -147,11 +147,17 @@ fn initWindows() !void {
         0,
         0,
     ) > 0) {
-        try win32ErrorCheck("GetMessageW", .{win32Error.ERROR_INVALID_WINDOW_HANDLE});
+        try win32ErrorCheck("GetMessageW", .{
+            win32Error.ERROR_INVALID_WINDOW_HANDLE,
+            win32Error.ERROR_INVALID_PARAMETER,
+        });
         _ = win32.TranslateMessage(&msg);
         try win32ErrorCheck("TranslateMessage", .{});
         _ = win32.DispatchMessage(&msg);
-        try win32ErrorCheck("DispatchMessage", .{win32Error.ERROR_ACCESS_DENIED});
+        try win32ErrorCheck("DispatchMessage", .{
+            win32Error.ERROR_INVALID_WINDOW_HANDLE,
+            win32Error.ERROR_ACCESS_DENIED,
+        });
     }
 }
 
