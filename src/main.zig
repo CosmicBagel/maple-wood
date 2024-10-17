@@ -157,9 +157,12 @@ fn initWindows() !void {
 
 fn windowEventHandler(hwnd: win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32.LPARAM) callconv(WINAPI) win32.LRESULT {
     // this is hella spammy, so have it commented out for now
-    // win32ErrorCheck("windowEventHandler", .{}) catch {
-    //     print("win32error\n", .{});
-    // };
+    win32ErrorCheck("windowEventHandler", .{
+        win32Error.ERROR_ACCESS_DENIED,
+        win32Error.ERROR_INVALID_WINDOW_HANDLE,
+    }) catch {
+        print("win32error\n", .{});
+    };
     switch (uMsg) {
         win32.WM_DESTROY => {
             win32.PostQuitMessage(0);
