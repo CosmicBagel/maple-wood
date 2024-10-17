@@ -131,6 +131,8 @@ fn initWindows() !void {
 
     print("\n\n{any}\n\n", .{windowClass});
 
+    // TODO: why does it need this loop here :( need to be able to return for
+    // initalization and move on to vulkan stuff
     var msg = win32.MSG{
         .hwnd = null,
         .lParam = 0,
