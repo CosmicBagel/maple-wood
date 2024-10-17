@@ -125,7 +125,7 @@ fn initWindows(hInstanceArg: win32.HINSTANCE) !void {
     };
 
     _ = win32.RegisterClassExW(&windowClass);
-    // try win32ErrorCheck();
+    try win32ErrorCheck("RegisterClassExW", .{});
 
     const hwnd = win32.CreateWindowExW(
         win32.WINDOW_EX_STYLE{},
@@ -145,10 +145,10 @@ fn initWindows(hInstanceArg: win32.HINSTANCE) !void {
         hInstance,
         null,
     );
-    // try win32ErrorCheck();
+    try win32ErrorCheck("CreateWindowExW", .{win32Error.ERROR_INVALID_WINDOW_HANDLE});
 
     _ = win32.ShowWindow(hwnd, win32.SHOW_WINDOW_CMD{ .SHOWNORMAL = 0 });
-    // try win32ErrorCheck();
+    try win32ErrorCheck("ShowWindow", .{win32Error.ERROR_INVALID_WINDOW_HANDLE});
 
     print("\n\n{any}\n\n", .{windowClass});
 }
