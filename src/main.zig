@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const gl = @import("zgl");
+
 const WINAPI = @import("std").os.windows.WINAPI;
 const zigwin32 = @import("zigwin32");
 const win32 = struct {
@@ -7,6 +9,7 @@ const win32 = struct {
     usingnamespace zigwin32.foundation;
     usingnamespace zigwin32.ui.windows_and_messaging;
     usingnamespace zigwin32.system.library_loader;
+    usingnamespace zigwin32.ui.input.keyboard_and_mouse;
 };
 const win32Error = win32.WIN32_ERROR;
 // const windows = win32.ui.windows_and_messaging;
@@ -73,16 +76,25 @@ fn win32ShowError(showMessageBox: bool, lastFunctionName: []const u8, winErr: wi
     }
 }
 
+// basicly what the MAKEINTATOM macro from winbase.h does
+pub fn make_into_atom(i: u16) ?[*:0]align(1) const u16 {
+    return @ptrFromInt(@as(usize, i));
+}
+
 fn initWindows() !void {
+    std.time.sleep(1 * std.time.ns_per_s);
     // sometimes there's just an error sitting there for some reason
     try win32ErrorCheck("initWindows - start", .{win32Error.ERROR_SXS_KEY_NOT_FOUND});
 
     const hInstance = win32.GetModuleHandleW(null);
     if (hInstance == null) {
         print("GetModuleHandleW returned null hInstance\n", .{});
+    } else {
+        print("GetModuleHandleW success!\n", .{});
     }
     try win32ErrorCheck("GetModuleHandleW", .{});
 
+    // const hCursor = win32.LoadCursor(null, win32.IDC_ARROW);
     const windowClass = win32.WNDCLASSEXW{
         .style = win32.WNDCLASS_STYLES{},
         .lpfnWndProc = windowEventHandler,
@@ -93,18 +105,25 @@ fn initWindows() !void {
         .hCursor = null,
         .hbrBackground = null,
         .hIconSm = null,
-        .cbSize = @sizeOf(win32.WNDCLASSEXW),
+        .cbSize = @sizeOf(win32.WNDCLASSEX),
         .cbClsExtra = 0,
         .cbWndExtra = 0,
     };
 
-    _ = win32.RegisterClassExW(&windowClass);
+    const windowClassId = win32.RegisterClassExW(&windowClass);
     try win32ErrorCheck("RegisterClassExW", .{});
+    if (windowClassId == 0) {
+        print("Failed to register window class\n", .{});
+        return MyError.Win32Error;
+    }
+    print("Class registered!\n", .{});
 
     const hwnd = win32.CreateWindowExW(
         win32.WINDOW_EX_STYLE{},
-        win32.L("yeet"),
-        null,
+        // win32.MAKEINTATOM
+        make_into_atom(windowClassId),
+        // win32.L("yeet"),
+        win32.L("maple"),
         win32.WS_OVERLAPPEDWINDOW,
         // win32.WINDOW_STYLE{},
 
@@ -121,6 +140,7 @@ fn initWindows() !void {
         null,
     );
     try win32ErrorCheck("CreateWindowExW", .{win32Error.ERROR_INVALID_WINDOW_HANDLE});
+    print("IsWindow: {any}\n", .{win32.IsWindow(hwnd) > 0});
 
     const showWindowResult = win32.ShowWindow(
         hwnd,
@@ -161,8 +181,15 @@ fn initWindows() !void {
     }
 }
 
-fn windowEventHandler(hwnd: win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32.LPARAM) callconv(WINAPI) win32.LRESULT {
-    // this is hella spammy, so have it commented out for now
+fn windowEventHandler(hWnd: win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam: win32.LPARAM) callconv(WINAPI) win32.LRESULT {
+    // _ = hWnd;
+    // _ = wParam;
+    // _ = lParam;
+
+    if (win32.IsWindow(hWnd) == 0) {
+        print("warning: window handle passed to windowEventHandler is invalid\n", .{});
+    }
+
     win32ErrorCheck("windowEventHandler", .{
         win32Error.ERROR_ACCESS_DENIED,
         win32Error.ERROR_INVALID_WINDOW_HANDLE,
@@ -174,9 +201,16 @@ fn windowEventHandler(hwnd: win32.HWND, uMsg: u32, wParam: win32.WPARAM, lParam:
             win32.PostQuitMessage(0);
             return 0;
         },
+        win32.WM_KEYDOWN => {
+            if (wParam == @intFromEnum(win32.VK_ESCAPE) or wParam == @intFromEnum(win32.VK_Q)) {
+                win32.PostQuitMessage(0);
+                return 0;
+            }
+        },
         else => {},
     }
-    return win32.DefWindowProcW(hwnd, uMsg, wParam, lParam);
+    return win32.DefWindowProcW(hWnd, uMsg, wParam, lParam);
+    // return uMsg;
 }
 
 fn initWayland() !void {

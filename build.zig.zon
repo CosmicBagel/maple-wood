@@ -27,6 +27,10 @@
             .url = "https://github.com/marlersoft/zigwin32/archive/407a4c7b869ee3d10db520fdfae8b9faf9b2adb5.zip",
             .hash = "1220cc9c9028e20f4ec2ece1155ae3479acc1cc509f9ab93acb74e8f5bbf8eefd2a9",
         },
+        .zgl = .{
+            .url = "https://github.com/ziglibs/zgl/archive/f170f34d1ed7a00aa6a2a00aafba40b661896010.zip",
+            .hash = "12204115129438285a43d0a853d4d4bb86a63ab82b140189a47bc987f7b08d2252b0",
+        },
     },
     .paths = .{
         "build.zig",
