@@ -77,7 +77,7 @@ fn win32ShowError(showMessageBox: bool, lastFunctionName: []const u8, winErr: wi
 }
 
 // basicly what the MAKEINTATOM macro from winbase.h does
-pub fn make_into_atom(i: u16) ?[*:0]align(1) const u16 {
+pub inline fn make_into_atom(i: u16) ?[*:0]align(1) const u16 {
     return @ptrFromInt(@as(usize, i));
 }
 
